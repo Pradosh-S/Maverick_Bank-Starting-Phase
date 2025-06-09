@@ -1,0 +1,152 @@
+-- Create Database
+CREATE DATABASE maverick_bank;
+USE maverick_bank;
+
+-- Create Customer Table
+CREATE TABLE Customer (
+    customerId BIGINT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(50) NOT NULL,
+    gender VARCHAR(10),
+    contactNumber VARCHAR(15),
+    address VARCHAR(255),
+    dateOfBirth DATE,
+    age INT,
+    aadharNumber VARCHAR(12),
+    panNumber VARCHAR(10),
+    accountIds TEXT, -- Comma-separated account IDs
+    loanIds TEXT, -- Comma-separated loan IDs
+    beneficiaryIds TEXT, -- Comma-separated beneficiary IDs
+    status VARCHAR(20) DEFAULT 'Active'
+);
+
+-- Create BankEmployee Table (before Account and Loan due to foreign key dependency)
+CREATE TABLE BankEmployee (
+    employeeId BIGINT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(50) NOT NULL,
+    role VARCHAR(50),
+    approvedAccountIds TEXT, -- Comma-separated account IDs
+    approvedLoanIds TEXT, -- Comma-separated loan IDs
+    status VARCHAR(20) DEFAULT 'Active'
+);
+
+-- Create Account Table
+CREATE TABLE Account (
+    accountId BIGINT PRIMARY KEY,
+    accountNumber VARCHAR(20) NOT NULL,
+    accountType VARCHAR(50),
+    balance DECIMAL(15, 2),
+    ifscCode VARCHAR(11),
+    branchName VARCHAR(100),
+    branchAddress VARCHAR(255),
+    customerId BIGINT,
+    transactionIds TEXT, -- Comma-separated transaction IDs
+    status VARCHAR(20) DEFAULT 'Pending',
+    approvedByEmployeeId BIGINT,
+    FOREIGN KEY (customerId) REFERENCES Customer(customerId),
+    FOREIGN KEY (approvedByEmployeeId) REFERENCES BankEmployee(employeeId)
+);
+
+-- Create Transaction Table
+CREATE TABLE Transaction (
+    transactionId BIGINT PRIMARY KEY,
+    transactionType VARCHAR(50),
+    amount DECIMAL(15, 2),
+    timestamp TIMESTAMP,
+    accountId BIGINT,
+    customerId BIGINT,
+    destinationAccountId VARCHAR(20),
+    FOREIGN KEY (accountId) REFERENCES Account(accountId),
+    FOREIGN KEY (customerId) REFERENCES Customer(customerId)
+);
+
+-- Create Loan Table
+CREATE TABLE Loan (
+    loanId BIGINT PRIMARY KEY,
+    loanAmount DECIMAL(15, 2),
+    interestRate DECIMAL(5, 2),
+    tenure INT, -- Duration in months
+    purpose VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'Pending',
+    customerId BIGINT,
+    approvedByEmployeeId BIGINT,
+    FOREIGN KEY (customerId) REFERENCES Customer(customerId),
+    FOREIGN KEY (approvedByEmployeeId) REFERENCES BankEmployee(employeeId)
+);
+
+-- Create Beneficiary Table
+CREATE TABLE Beneficiary (
+    beneficiaryId BIGINT PRIMARY KEY,
+    accountName VARCHAR(100) NOT NULL,
+    accountNumber VARCHAR(20) NOT NULL,
+    bankName VARCHAR(100),
+    branchName VARCHAR(100),
+    ifscCode VARCHAR(11),
+    customerId BIGINT,
+    FOREIGN KEY (customerId) REFERENCES Customer(customerId)
+);
+
+-- Create Administrator Table
+CREATE TABLE Administrator (
+    adminId BIGINT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(50) NOT NULL,
+    managedCustomerIds TEXT, -- Comma-separated customer IDs
+    managedEmployeeIds TEXT -- Comma-separated employee IDs
+);
+
+-- Insert Sample Data
+-- Customer
+INSERT INTO Customer (customerId, name, email, password, gender, contactNumber, address, dateOfBirth, age, aadharNumber, panNumber, accountIds, loanIds, beneficiaryIds, status)
+VALUES (100, 'Jane Doe', 'jane@doe.com', 'pass123', 'Female', '9876543210', '123 Elm St', '1990-05-15', 35, '123456789012', 'ABCDE1234F', '101,102', '301', '401', 'Active');
+
+-- BankEmployee
+INSERT INTO BankEmployee (employeeId, name, email, password, role, approvedAccountIds, approvedLoanIds, status)
+VALUES (501, 'Emily Brown', 'emily@bank.com', 'secure123', 'Loan Officer', '101,102', '301', 'Active');
+
+-- Account
+INSERT INTO Account (accountId, accountNumber, accountType, balance, ifscCode, branchName, branchAddress, customerId, transactionIds, status, approvedByEmployeeId)
+VALUES (101, '9876543210', 'Savings', 10000.00, 'IFSC0001234', 'Main Branch', '123 Main St, City', 100, '201,202', 'Approved', 501);
+
+-- Transaction
+INSERT INTO Transaction (transactionId, transactionType, amount, timestamp, accountId, customerId, destinationAccountId)
+VALUES (201, 'Deposit', 5000.00, '2025-06-09 09:56:00', 101, 100, NULL);
+
+-- Loan
+INSERT INTO Loan (loanId, loanAmount, interestRate, tenure, purpose, status, customerId, approvedByEmployeeId)
+VALUES (301, 200000.00, 5.50, 36, 'Home Renovation', 'Approved', 100, 501);
+
+-- Beneficiary
+INSERT INTO Beneficiary (beneficiaryId, accountName, accountNumber, bankName, branchName, ifscCode, customerId)
+VALUES (401, 'Bob Smith', '1234567890', 'Other Bank', 'Other Branch', 'OTHR0005678', 100);
+
+-- Administrator
+INSERT INTO Administrator (adminId, name, email, password, managedCustomerIds, managedEmployeeIds)
+VALUES (601, 'Admin One', 'admin@bank.com', 'admin123', '100', '501');
+
+-- Sample Queries
+-- Query 1: Get all accounts for a customer
+SELECT c.name AS customer_name, a.accountNumber, a.balance
+FROM Customer c
+JOIN Account a ON c.customerId = a.customerId
+WHERE c.customerId = 100;
+
+-- Query 2: Get all transactions for an account
+SELECT t.transactionId, t.transactionType, t.amount, t.timestamp
+FROM Transaction t
+WHERE t.accountId = 101;
+
+-- Query 3: Get loan details with approving employee
+SELECT l.loanId, l.loanAmount, l.status, e.name AS approved_by
+FROM Loan l
+JOIN BankEmployee e ON l.approvedByEmployeeId = e.employeeId
+WHERE l.customerId = 100;
+
+-- Query 4: Get all beneficiaries for a customer
+SELECT b.accountName, b.accountNumber
+FROM Beneficiary b
+WHERE b.customerId = 100;
